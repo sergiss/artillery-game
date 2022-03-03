@@ -4,13 +4,16 @@ const WIDTH  = 640;
 const HEIGHT = 480;
 
 const GRAVITY = 0.25;
-const TANK_SIZE = 20;
+const TANK_SIZE = 17;
 
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
 
 var tankA, tankB, bullet;
 var imageData;
+
+var wind = 0;
+var turn = 0;
 
 const setRGB = (data, index, r, g, b) => {
     const i = index << 2;
@@ -45,6 +48,7 @@ document.addEventListener("keydown", (e)=> {
 const fire = (tank, tgt) => {
     if(!bullet) {
         bullet = {
+            tgt: tgt,
             position: new Vec2(tankA.position),
             velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
         }
@@ -114,28 +118,45 @@ const step = ()=> {
     
     context.putImageData(imageData, 0, 0);
 
-    updateTank(tankA, true);
-    updateTank(tankB, false);
+    updateTank(tankA);
+    updateTank(tankB);
 
+    context.fillStyle = "gray";
+    context.fillText("Angle: " + tankA.angle.toFixed(2), 20, 20);
+    context.fillText("Force: " + tankA.force.toFixed(2), 20, 40);
+    context.fillText("Wind: " + wind.toFixed(2), 20, 60);
+    
     if(bullet) {
         bullet.velocity.y += GRAVITY;
+        bullet.velocity.x += wind * 0.016 ;
         bullet.position.add(bullet.velocity);
         context.fillStyle = "gray";
         context.fillRect(bullet.position.x - 2, bullet.position.y - 2, 4, 4);
         if(bullet.position.y + 2 >= HEIGHT) {
             bullet = null;
+            nextTurn();
         } else {
-            
-            if(checkCollision(bullet.position, 4, imageData)){
+            const radius = TANK_SIZE * 0.5 + 2;
+            if(new Vec2(bullet.position).sub(bullet.tgt.position).len2() < radius * radius) {
+                bullet.tgt.enemy.score++;
+                init();                
+                bullet = null;
+            } else if(checkCollision(bullet.position, 4, imageData)){
                 removeData(imageData, bullet.position.x, HEIGHT - bullet.position.y, 30);
                 bullet = null;
+                nextTurn();
             }
         }
     }
     
 }
 
-const updateTank = (tank, showInfo) => {
+const nextTurn = ()=> {
+    wind = 1 - Math.random() * 2;
+    turn = (turn + 1) % 2;
+}
+
+const updateTank = (tank) => {
 
     if(!checkCollision(tank.position, TANK_SIZE, imageData)) {
         tank.velocity += GRAVITY;
@@ -153,12 +174,6 @@ const updateTank = (tank, showInfo) => {
     context.restore();
 
     context.fillRect(tank.position.x - TANK_SIZE * 0.5, tank.position.y - TANK_SIZE * 0.5, TANK_SIZE, TANK_SIZE);
-
-    if(showInfo) {
-        context.fillStyle = "gray";
-        context.fillText("Angle: " + tank.angle.toFixed(2), 20, 20);
-        context.fillText("Force: " + tank.force.toFixed(2), 20, 40);
-    }
 
 }
 
@@ -200,24 +215,35 @@ const createPlayers = () => {
         velocity: 0,
         angle: 0.4,
         force: 10,
-        color: "red"
+        color: "red",
+        score: 0
     }
     
     tankB = {
         position: new Vec2(WIDTH - 50, 0),
         velocity: 0,
-        angle: 0,
-        force: 2,
-        color: "blue"
+        angle: -0.4,
+        force: 10,
+        color: "blue",
+        score: 0
     }
+
+    tankB.enemy = tankA;
+    tankA.enemy = tankB;
 
 }
 
 const init = ()=> {
-    createPlayers();
+    tankA.position.y = 0;
+    tankA.velocity = 0;
+    tankB.position.y = 0;
+    tankB.velocity = 0;
     createTerrain(WIDTH, HEIGHT);
+    turn = -1;
+    nextTurn();
 }
 
+createPlayers();
 init();
 
 step();
