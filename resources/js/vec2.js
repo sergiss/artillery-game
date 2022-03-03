@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2022, Sergio S.- sergi.ss4@gmail.com http://sergiosoriano.com
+ */
 export default class Vec2 {
 
     constructor(x = 0, y = 0) {
