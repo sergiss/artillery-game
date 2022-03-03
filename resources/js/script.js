@@ -9,6 +9,7 @@ const TANK_SIZE = 17;
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
 
+
 var tankA, tankB, bullet;
 var imageData;
 
@@ -47,10 +48,13 @@ document.addEventListener("keydown", (e)=> {
 
 const fire = (tank, tgt) => {
     if(!bullet) {
-        bullet = {
-            tgt: tgt,
-            position: new Vec2(tankA.position),
-            velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
+        if((turn === 0 && tgt === tankB)
+        || (turn === 1 && tgt === tankA)) {
+            bullet = {
+                tgt: tgt,
+                position: new Vec2(tank.position),
+                velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
+            }
         }
     }
 }
@@ -122,38 +126,132 @@ const step = ()=> {
     updateTank(tankB);
 
     context.fillStyle = "gray";
+    context.font = "16px monospace";
     context.fillText("Angle: " + tankA.angle.toFixed(2), 20, 20);
     context.fillText("Force: " + tankA.force.toFixed(2), 20, 40);
-    context.fillText("Wind: " + wind.toFixed(2), 20, 60);
+    context.fillText("Wind : " + wind.toFixed(2), 20, 60);
     
     if(bullet) {
-        bullet.velocity.y += GRAVITY;
-        bullet.velocity.x += wind * 0.016 ;
-        bullet.position.add(bullet.velocity);
-        context.fillStyle = "gray";
-        context.fillRect(bullet.position.x - 2, bullet.position.y - 2, 4, 4);
-        if(bullet.position.y + 2 >= HEIGHT) {
-            bullet = null;
-            nextTurn();
-        } else {
-            const radius = TANK_SIZE * 0.5 + 2;
-            if(new Vec2(bullet.position).sub(bullet.tgt.position).len2() < radius * radius) {
-                bullet.tgt.enemy.score++;
-                init();                
-                bullet = null;
-            } else if(checkCollision(bullet.position, 4, imageData)){
+        const state = updateBullet(bullet);
+        switch(state) {
+            case 2:
+               bullet.tgt.enemy.score++;
+               bullet = null;
+               init();               
+                break;
+            case 0:
                 removeData(imageData, bullet.position.x, HEIGHT - bullet.position.y, 30);
+            case 1:
                 bullet = null;
                 nextTurn();
-            }
+                break;
+            default:
+                context.fillStyle = "gray";
+                context.fillRect(bullet.position.x - 2, bullet.position.y - 2, 4, 4);
+            break;
         }
     }
-    
+
+    if(turn === 1 && !bullet) {
+
+        tankB.force = Math.random() * 30;
+        tankB.angle = -Math.random()
+
+        let endPoint = predict(tankB, 20);
+        let dst = tankA.position.dst2(endPoint);
+
+        if(tankB.bestShot.dst > dst) {
+            tankB.bestShot.dst = dst;
+            tankB.bestShot.force = tankB.force;
+            tankB.bestShot.angle = tankB.angle;
+            
+        } 
+        tankB.bestShot.predictions++;
+      
+        if(tankB.bestShot.predictions >= 5) {
+            tankB.angle = tankB.bestShot.angle;
+            tankB.force = tankB.bestShot.force;
+            fire(tankB, tankA);
+        }
+
+           /* context.strokeStyle = '#f00';
+            context.beginPath();
+            context.moveTo(points[0].x, points[0].y);
+            for(let i = 1; i < points.length ; ++i) {
+                context.lineTo(points[i].x, points[i].y);
+            }
+            context.stroke(); */
+
+    }
+
+}
+
+const updateBullet = (bullet) => {
+
+    bullet.velocity.y += GRAVITY;
+    bullet.velocity.x += wind * 0.025 ;
+    bullet.position.add(bullet.velocity);
+    if(bullet.position.y + 2 >= HEIGHT) {
+        return 1; // out of screen
+    } else {
+        const radius = TANK_SIZE * 0.5 + 2;
+        if(new Vec2(bullet.position).sub(bullet.tgt.position).len2() < radius * radius) {
+            return 2; // hit tgt
+        } else if(checkCollision(bullet.position, 4, imageData)){
+            return 0; // hit terrain
+        }
+    }
+
+    return -1; // flying
+}
+
+var lastAngle = -1;
+var lastForce = -1;
+var lastWind  = -1;
+
+var points;
+
+const predict = (tank, steps) => {
+
+    if(lastAngle !== tank.angle || lastForce !== tank.force || lastWind !== wind) {
+        
+        lastAngle = tank.angle;
+        lastForce = tank.force;
+        lastWind  = wind;
+
+        const b = {
+            tgt: tank === tankA ? tankB : tankA,
+            position: new Vec2(tank.position),
+            velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
+        }
+
+        points = [new Vec2(b.position)];
+
+        for(let i = 0; ; ++i) {
+
+            let state = updateBullet(b);
+            if(state !== -1) {
+                const result = new Vec2(b.position);
+                points.push(result);
+                return result;
+            }
+            
+            if(i % steps) {
+                points.push(new Vec2(b.position));
+            }            
+
+        }
+
+    }
+
 }
 
 const nextTurn = ()=> {
     wind = 1 - Math.random() * 2;
     turn = (turn + 1) % 2;
+    if(turn === 1) {
+        tankB.bestShot.predictions = 0;
+    }
 }
 
 const updateTank = (tank) => {
@@ -225,7 +323,8 @@ const createPlayers = () => {
         angle: -0.4,
         force: 10,
         color: "blue",
-        score: 0
+        score: 0,
+        bestShot: {predictions: 0}
     }
 
     tankB.enemy = tankA;
@@ -238,6 +337,7 @@ const init = ()=> {
     tankA.velocity = 0;
     tankB.position.y = 0;
     tankB.velocity = 0;
+    tankB.bestShot.dst = Number.MAX_VALUE;
     createTerrain(WIDTH, HEIGHT);
     turn = -1;
     nextTurn();
