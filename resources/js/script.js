@@ -85,7 +85,12 @@ const removeData = (imageData, x, y, radius)=> {
             diffY = j - y;
             len2 = dx2 + diffY * diffY;
             if(len2 < r2) {
-                setRGB(imageData.data, toImageDataIndex(imageData, i, j), 4, 0, 32);
+                if(Math.random() < 0.0006) { // stars
+                    setRGB(imageData.data, toImageDataIndex(imageData, i, j), 128, 128, 128);
+                } else {
+                    setRGB(imageData.data, toImageDataIndex(imageData, i, j), 4, 0, 32);
+                }
+                
             }
         }
     }
@@ -306,7 +311,11 @@ const createTerrain = (w, h, minY = h * 0.1, slope = 50, steps = 40) => {
             setRGB(imageData.data, toImageDataIndex(imageData, i, j), 90, 175, 31);
         }
         for(;j < h; ++j){
-            setRGB(imageData.data, toImageDataIndex(imageData, i, j), 4, 0, 32);
+            if(Math.random() < 0.0006) { // stars
+                setRGB(imageData.data, toImageDataIndex(imageData, i, j), 128, 128, 128);
+            } else {
+                setRGB(imageData.data, toImageDataIndex(imageData, i, j), 4, 0, 32);
+            }
         }
     }
 
