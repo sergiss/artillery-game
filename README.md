@@ -8,6 +8,7 @@ Features:
 
 <ur>
   <li>Trajectory predicion for AI</li>
+  <li>Random landscape generation</li>
   <li>Destructible landscape</li>
 </ur>
 </br>
