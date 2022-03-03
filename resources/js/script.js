@@ -94,7 +94,6 @@ const removeData = (imageData, x, y, radius)=> {
                 } else {
                     setRGB(imageData.data, toImageDataIndex(imageData, i, j), 4, 0, 32);
                 }
-                
             }
         }
     }
@@ -142,9 +141,9 @@ const step = ()=> {
         const state = updateBullet(bullet);
         switch(state) {
             case 2:
-               bullet.tgt.enemy.score++;
-               bullet = null;
-               init();               
+                bullet.tgt.enemy.score++;
+                bullet = null;
+                init();               
                 break;
             case 0:
                 removeData(imageData, bullet.position.x, HEIGHT - bullet.position.y, 30);
