@@ -1,3 +1,8 @@
+* {
+    font-family: monospace, Arial, Helvetica, sans-serif;
+    text-transform: uppercase;
+}
+
 html, body {
     height: 100%;
 }
@@ -5,12 +10,26 @@ html, body {
 body {
     margin: 0;
     display: flex;
+    flex-direction: column;
+
     align-items: center;
     justify-content: center;
-    
 }
 
 #game {
     width: 640px;
     height: 480px;
+}
+
+a {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+a:link {
+    text-decoration: none;
+}
+
+a:visited {
+    text-decoration: none;
 }
