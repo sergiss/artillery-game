@@ -10,6 +10,7 @@ var tankA, tankB, bullet, imageData;
 
 var wind = 0;
 var turn = 0;
+var autoPlay = true, time = 0;
 
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
@@ -18,6 +19,12 @@ canvas.width  = WIDTH;
 canvas.height = HEIGHT;
 
 document.addEventListener("keydown", (e)=> {
+
+    if(autoPlay) {
+        autoPlay = false;
+        init();
+        return;
+    }
 
     switch(e.code) {
         case "Space":
@@ -36,6 +43,8 @@ document.addEventListener("keydown", (e)=> {
             tankA.force += 0.5;
             break;
     }
+
+
 
 });
 
@@ -135,22 +144,18 @@ const step = ()=> {
                 nextTurn();
                 break;
             default:
-                context.fillStyle = "gray";
+                context.fillStyle = "orange";
                 context.fillRect(bullet.position.x - 2, bullet.position.y - 2, 4, 4);
             break;
         }
     }
 
-    if(turn === 0 && !bullet) {
-       
-        cpuPlay(tankA);
-
-    }
-
-    if(turn === 1 && !bullet) {
-       
-        cpuPlay(tankB);
-
+    if(!bullet) {
+        if(autoPlay && turn === 0) {
+            cpuPlay(tankA);
+        } else  if(turn === 1) {
+            cpuPlay(tankB);
+        }
     }
 
     // UI Text
@@ -162,6 +167,22 @@ const step = ()=> {
     context.fillText("Angle: " + tankA.angle.toFixed(2), 20, 60);
     context.fillText("Force: " + tankA.force.toFixed(2), 20, 80);
     context.fillText(`Wind ${wind > 0 ? '>>>' : '<<<'} (${wind.toFixed(2)})`, 20, 120 );
+
+    if(autoPlay) {
+        context.fillStyle = "pink";
+        let text = "Left/Right keys to change angle";
+        context.fillText(text,  WIDTH * 0.5 - context.measureText(text).width * 0.5, 60); 
+        text = "Up/Down keys to change force";
+        context.fillText(text,  WIDTH * 0.5 - context.measureText(text).width * 0.5, 80); 
+        time += 1;
+        if(time < 20) {
+            text = "Press any key to start...";
+            context.fillText(text,  WIDTH * 0.5 - context.measureText(text).width * 0.5, 120); 
+        } else if(time > 40) {
+            time = 0;
+        }
+       
+    }
 
 }
 
