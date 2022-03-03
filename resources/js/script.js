@@ -203,9 +203,9 @@ const cpuPlay = (tank) => {
     let angle = tank.angle;
     let force = tank.force;
     let direction = tank.position.x - tank.enemy.position.x > 0 ? -1 : 1;
-    let n = 3 + tank.enemy.score; // Dynamic difficulty
-    for(let i = 1; i < n; ++i) {
-        tank.force =  Math.random() * 30;
+    let n = 1 + tank.enemy.score; // Dynamic difficulty
+    for(let i = 0; i < n; ++i) {
+        tank.force =  Math.random() * 15 + 5;
         tank.angle =  Math.random() * direction;
         endPoint = predict(tank /*, 20*/);
         dst = tank.enemy.position.dst2(endPoint);
