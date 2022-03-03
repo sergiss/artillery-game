@@ -6,52 +6,45 @@ const HEIGHT = 480;
 const GRAVITY = 0.25;
 const TANK_SIZE = 17;
 
-const canvas = document.querySelector("#game");
-const context = canvas.getContext("2d");
-
-
-var tankA, tankB, bullet;
-var imageData;
+var tankA, tankB, bullet, imageData;
 
 var wind = 0;
 var turn = 0;
 
-const setRGB = (data, index, r, g, b) => {
-    const i = index << 2;
-    data[i    ] = r; // R
-    data[i + 1] = g; // G
-    data[i + 2] = b; // B
-    data[i + 3] = 255; // A
-}
+const canvas = document.querySelector("#game");
+const context = canvas.getContext("2d");
+
+canvas.width  = WIDTH;
+canvas.height = HEIGHT;
 
 document.addEventListener("keydown", (e)=> {
 
     switch(e.code) {
         case "Space":
-            fire(tankA, tankB);
-            break;
-        case "ArrowUp":
-            tankA.angle += 0.02;
-            break;
-        case "ArrowDown":
-            tankA.angle -= 0.02;
-            break;
-        case "ArrowLeft":
-            tankA.force -= 0.5;
+            fire(tankA);
             break;
         case "ArrowRight":
+            tankA.angle += 0.02;
+            break;
+        case "ArrowLeft":
+            tankA.angle -= 0.02;
+            break;
+        case "ArrowDown":
+            tankA.force -= 0.5;
+            break;
+        case "ArrowUp":
             tankA.force += 0.5;
             break;
     }
 
 });
 
-const fire = (tank, tgt) => {
-    if(!bullet) {
-        if((turn === 0 && tgt === tankB)
-        || (turn === 1 && tgt === tankA)) {
+const fire = (tank) => {
+    if(!bullet && tank.onFloor) {
+        if((turn === 0 && tank.enemy === tankB)
+        || (turn === 1 && tank.enemy === tankA)) {
             bullet = {
-                tgt: tgt,
+                tgt: tank.enemy,
                 position: new Vec2(tank.position),
                 velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
             }
@@ -122,15 +115,11 @@ const step = ()=> {
     
     context.putImageData(imageData, 0, 0);
 
+    // Update tanks
     updateTank(tankA);
     updateTank(tankB);
-
-    context.fillStyle = "gray";
-    context.font = "16px monospace";
-    context.fillText("Angle: " + tankA.angle.toFixed(2), 20, 20);
-    context.fillText("Force: " + tankA.force.toFixed(2), 20, 40);
-    context.fillText("Wind : " + wind.toFixed(2), 20, 60);
     
+    // Update bullet
     if(bullet) {
         const state = updateBullet(bullet);
         switch(state) {
@@ -152,45 +141,65 @@ const step = ()=> {
         }
     }
 
-    if(turn === 1 && !bullet) {
-
-        tankB.force = Math.random() * 30;
-        tankB.angle = -Math.random()
-
-        let endPoint = predict(tankB, 20);
-        let dst = tankA.position.dst2(endPoint);
-
-        if(tankB.bestShot.dst > dst) {
-            tankB.bestShot.dst = dst;
-            tankB.bestShot.force = tankB.force;
-            tankB.bestShot.angle = tankB.angle;
-            
-        } 
-        tankB.bestShot.predictions++;
-      
-        if(tankB.bestShot.predictions >= 5) {
-            tankB.angle = tankB.bestShot.angle;
-            tankB.force = tankB.bestShot.force;
-            fire(tankB, tankA);
-        }
-
-           /* context.strokeStyle = '#f00';
-            context.beginPath();
-            context.moveTo(points[0].x, points[0].y);
-            for(let i = 1; i < points.length ; ++i) {
-                context.lineTo(points[i].x, points[i].y);
-            }
-            context.stroke(); */
+    if(turn === 0 && !bullet) {
+       
+        cpuPlay(tankA);
 
     }
 
+    if(turn === 1 && !bullet) {
+       
+        cpuPlay(tankB);
+
+    }
+
+    // UI Text
+    context.fillStyle = "gray";
+    context.font = "25px monospace";
+    context.fillText("Player: " + tankA.score, 20, 30);
+    context.fillText("CPU: " + tankB.score, WIDTH - 120, 30);
+    context.font = "16px monospace";
+    context.fillText("Angle: " + tankA.angle.toFixed(2), 20, 60);
+    context.fillText("Force: " + tankA.force.toFixed(2), 20, 80);
+    context.fillText(`Wind ${wind > 0 ? '>>>' : '<<<'} (${wind.toFixed(2)})`, 20, 120 );
+
+}
+
+const cpuPlay = (tank) => {
+    // Initial prediction
+    let endPoint = predict(tank);
+    let dst = tank.enemy.position.dst2(endPoint);
+    let bestDst = dst;
+    let angle = tank.angle;
+    let force = tank.force;
+    let direction = tank.position.x - tank.enemy.position.x > 0 ? -1 : 1;
+    let n = 3 + tank.enemy.score; // Dynamic difficulty
+    for(let i = 1; i < n; ++i) {
+        tank.force =  Math.random() * 30;
+        tank.angle =  Math.random() * direction;
+        endPoint = predict(tank /*, 20*/);
+        dst = tank.enemy.position.dst2(endPoint);
+        if(dst < bestDst) {
+            bestDst = dst;
+            angle = tank.angle;
+            force = tank.force;
+        }
+    }
+    
+    tank.angle = angle;
+    tank.force = force;
+
+    // shoot the best shot
+    fire(tank);
 }
 
 const updateBullet = (bullet) => {
-
+    // Update forces
     bullet.velocity.y += GRAVITY;
     bullet.velocity.x += wind * 0.025 ;
+    // Apply forces
     bullet.position.add(bullet.velocity);
+    // Test collisions
     if(bullet.position.y + 2 >= HEIGHT) {
         return 1; // out of screen
     } else {
@@ -205,43 +214,18 @@ const updateBullet = (bullet) => {
     return -1; // flying
 }
 
-var lastAngle = -1;
-var lastForce = -1;
-var lastWind  = -1;
+const predict = (tank) => {
 
-var points;
-
-const predict = (tank, steps) => {
-
-    if(lastAngle !== tank.angle || lastForce !== tank.force || lastWind !== wind) {
-        
-        lastAngle = tank.angle;
-        lastForce = tank.force;
-        lastWind  = wind;
-
-        const b = {
-            tgt: tank === tankA ? tankB : tankA,
-            position: new Vec2(tank.position),
-            velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
+    const bullet = {
+        tgt: tank.enemy,
+        position: new Vec2(tank.position),
+        velocity: new Vec2(0, tank.force).rotate(tank.angle + Math.PI)
+    }
+    for(let i = 0; ; ++i) { // simulate
+        let state = updateBullet(bullet);
+        if(state !== -1) {
+            return new Vec2(bullet.position);
         }
-
-        points = [new Vec2(b.position)];
-
-        for(let i = 0; ; ++i) {
-
-            let state = updateBullet(b);
-            if(state !== -1) {
-                const result = new Vec2(b.position);
-                points.push(result);
-                return result;
-            }
-            
-            if(i % steps) {
-                points.push(new Vec2(b.position));
-            }            
-
-        }
-
     }
 
 }
@@ -249,9 +233,6 @@ const predict = (tank, steps) => {
 const nextTurn = ()=> {
     wind = 1 - Math.random() * 2;
     turn = (turn + 1) % 2;
-    if(turn === 1) {
-        tankB.bestShot.predictions = 0;
-    }
 }
 
 const updateTank = (tank) => {
@@ -259,8 +240,10 @@ const updateTank = (tank) => {
     if(!checkCollision(tank.position, TANK_SIZE, imageData)) {
         tank.velocity += GRAVITY;
         tank.position.y += tank.velocity;
+        tank.onFloor = false;
     } else {
         tank.velocity = 0;
+        tank.onFloor = true;
     }
 
     context.fillStyle = tank.color;
@@ -273,12 +256,14 @@ const updateTank = (tank) => {
 
     context.fillRect(tank.position.x - TANK_SIZE * 0.5, tank.position.y - TANK_SIZE * 0.5, TANK_SIZE, TANK_SIZE);
 
+    if(tank.position.y > HEIGHT) {
+        tank.enemy.score++;
+        init();
+    }
+
 }
 
 const createTerrain = (w, h, minY = h * 0.1, slope = 50, steps = 40) => {
-
-    canvas.width  = WIDTH;
-    canvas.height = HEIGHT;
 
     imageData = context.createImageData(w, h);
 
@@ -306,6 +291,14 @@ const createTerrain = (w, h, minY = h * 0.1, slope = 50, steps = 40) => {
 
 }
 
+const setRGB = (data, index, r, g, b) => {
+    const i = index << 2;
+    data[i    ] = r; // R
+    data[i + 1] = g; // G
+    data[i + 2] = b; // B
+    data[i + 3] = 255; // A
+}
+
 const createPlayers = () => {
 
     tankA = {
@@ -323,8 +316,7 @@ const createPlayers = () => {
         angle: -0.4,
         force: 10,
         color: "blue",
-        score: 0,
-        bestShot: {predictions: 0}
+        score: 0
     }
 
     tankB.enemy = tankA;
@@ -335,9 +327,14 @@ const createPlayers = () => {
 const init = ()=> {
     tankA.position.y = 0;
     tankA.velocity = 0;
+    tankA.onFloor = false;
+    tankA.angle = Math.random();
+
     tankB.position.y = 0;
     tankB.velocity = 0;
-    tankB.bestShot.dst = Number.MAX_VALUE;
+    tankB.onFloor = false;
+    tankA.angle = Math.random();
+
     createTerrain(WIDTH, HEIGHT);
     turn = -1;
     nextTurn();
