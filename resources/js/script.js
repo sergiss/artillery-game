@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2022, Sergio S.- sergi.ss4@gmail.com http://sergiosoriano.com
+ */
+
 import Vec2 from "./vec2.js";
 
 const WIDTH  = 640;
