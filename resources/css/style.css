@@ -11,13 +11,13 @@ body {
     margin: 0;
     display: flex;
     flex-direction: column;
-
     align-items: center;
     justify-content: center;
 }
 
 #game {
-    width: 640px;
+    width: 100%;
+    max-width: 640px;
     height: 480px;
 }
 
