@@ -48,8 +48,6 @@ document.addEventListener("keydown", (e)=> {
             break;
     }
 
-
-
 });
 
 const fire = (tank) => {
@@ -206,7 +204,7 @@ const cpuPlay = (tank) => {
     for(let i = 0; i < n; ++i) {
         tank.force =  Math.random() * 15 + 5;
         tank.angle =  Math.random() * direction;
-        endPoint = predict(tank /*, 20*/);
+        endPoint = predict(tank);
         dst = tank.enemy.position.dst2(endPoint);
         if(dst < bestDst) {
             bestDst = dst;
